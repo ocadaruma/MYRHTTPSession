@@ -12,8 +12,6 @@
 
 + (instancetype)sharedSession;
 
-//- (void)executeRequest:(NSURLRequest *)request progress:(void (^)(int64_t doneBytes, int64_t totalBytes))progress completion:(void (^)(NSHTTPURLResponse* response, NSData* body, NSError* error))completion;
-
 - (void)executeRequest:(NSURLRequest *)request progress:(void (^)(int64_t doneBytes, int64_t totalBytes))progress canceled:(void (^)())canceled completion:(void (^)(NSHTTPURLResponse* response, NSData* body, NSError* error))completion;
 
 - (void)cancelAll;

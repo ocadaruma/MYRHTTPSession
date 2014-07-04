@@ -129,7 +129,9 @@ static MYRHTTPSession* _session = nil;
 
 - (void)URLSession:(NSURLSession *)session downloadTask:(NSURLSessionDownloadTask *)downloadTask didWriteData:(int64_t)bytesWritten totalBytesWritten:(int64_t)totalBytesWritten totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite
 {
-    if (_progressHandlerMap[downloadTask]) {
+    NSString* method = downloadTask.originalRequest.HTTPMethod;
+    
+    if (([method hasPrefix:@"GET"] || [method hasPrefix:@"HEAD"]) && _progressHandlerMap[downloadTask]) {
         void (^progress)(int64_t, int64_t);
         progress = _progressHandlerMap[downloadTask];
         progress(totalBytesWritten, totalBytesExpectedToWrite);
@@ -138,7 +140,9 @@ static MYRHTTPSession* _session = nil;
 
 - (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didSendBodyData:(int64_t)bytesSent totalBytesSent:(int64_t)totalBytesSent totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
 {
-    if (_progressHandlerMap[task]) {
+    NSString* method = task.originalRequest.HTTPMethod;
+    
+    if (!([method hasPrefix:@"GET"] || [method hasPrefix:@"HEAD"]) && _progressHandlerMap[task]) {
         void (^progress)(int64_t, int64_t);
         progress = _progressHandlerMap[task];
         progress(totalBytesSent, totalBytesExpectedToSend);

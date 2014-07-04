@@ -210,11 +210,6 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
     [self ensureHandlersAreCleared:session];
 }
 
-- (void)testUploadProgress
-{
-    
-}
-
 - (void)ensureHandlersAreCleared:(MYRHTTPSession* )session
 {
     NSDictionary* progressHandlers = [session valueForKey:@"progressHandlerMap"];

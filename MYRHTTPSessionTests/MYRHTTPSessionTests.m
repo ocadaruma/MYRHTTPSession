@@ -8,13 +8,42 @@
 
 #import "MYRHTTPSessionTests.h"
 #import "MYRHTTPSession.h"
+#import <OHHTTPStubs.h>
 
-static NSString* const kImageUrl = @"http://colorvisiontesting.com/plate%20with%205.jpg";
-static NSString* const kHeavyImageUrl = @"http://upload.wikimedia.org/wikipedia/commons/1/19/DSCF1069-Castielli-Italy-Etna-Creative_Commons-High_Resolution_2.jpg";
-static NSString* const kMediumImageUrl = @"http://commons.hortipedia.com/images/3/34/Saxifraga_cortusifolia_leaf_photo_file_700KB.jpg";
-static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
+static NSString* const kDownloadUrl = @"http://download";
+static NSString* const kUnavailableHost = @"http://unavailable";
+static NSString* const kUploadUrl = @"http://upload";
 
 @implementation MYRHTTPSessionTests
+
+- (void)setUpClass
+{
+    [OHHTTPStubs stubRequestsPassingTest:^BOOL(NSURLRequest *request) {
+        return YES;
+    } withStubResponse:^OHHTTPStubsResponse *(NSURLRequest *request) {
+        NSString* url = [request.URL absoluteString];
+        
+        OHHTTPStubsResponse* response = nil;
+
+        if ([url isEqualToString:kDownloadUrl]) {
+            NSData* data = UIImagePNGRepresentation([UIImage imageNamed:@"lena.png"]);
+            response = [OHHTTPStubsResponse responseWithData:data statusCode:200 headers:nil];
+            response.responseTime = 2.0;
+        } else if ([url isEqualToString:kUnavailableHost]) {
+            response = [OHHTTPStubsResponse responseWithError:[NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCannotConnectToHost userInfo:nil]];
+        } else if ([url isEqualToString:kUploadUrl]) {
+            response = [OHHTTPStubsResponse responseWithData:nil statusCode:200 headers:nil];
+            response.requestTime = 1.0;
+        }
+        
+        return response;
+    }];
+}
+
+- (void)tearDownClass
+{
+    [OHHTTPStubs removeAllStubs];
+}
 
 - (void)testSingleton
 {
@@ -28,8 +57,8 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
 {
     MYRHTTPSession* session = [MYRHTTPSession sharedSession];
     
-    NSMutableURLRequest* req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:kImageUrl]];
-    NSData* data = [NSData dataWithContentsOfURL:[NSURL URLWithString:kImageUrl]];
+    NSMutableURLRequest* req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:kDownloadUrl]];
+    NSData* data = [NSData dataWithContentsOfURL:[NSURL URLWithString:kDownloadUrl]];
     
     GHAssertTrue([data length] > 0, @"get test image");
     
@@ -58,7 +87,7 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
 {
     MYRHTTPSession* session = [MYRHTTPSession sharedSession];
     
-    NSMutableURLRequest* req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:kNotfoundUrl]];
+    NSMutableURLRequest* req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:kUnavailableHost]];
     
     NSInteger max = 10;
     __block NSInteger count = 0;
@@ -85,8 +114,8 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
 {
     MYRHTTPSession* session = [MYRHTTPSession sharedSession];
     
-    NSMutableURLRequest* req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:kMediumImageUrl]];
-    NSData* data = [NSData dataWithContentsOfURL:[NSURL URLWithString:kMediumImageUrl]];
+    NSMutableURLRequest* req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:kDownloadUrl]];
+    NSData* data = [NSData dataWithContentsOfURL:[NSURL URLWithString:kDownloadUrl]];
     
     GHAssertTrue([data length] > 0, @"get test image");
     
@@ -118,7 +147,7 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
 {
     MYRHTTPSession* session = [MYRHTTPSession sharedSession];
     
-    NSMutableURLRequest* req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:kHeavyImageUrl]];
+    NSMutableURLRequest* req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:kDownloadUrl]];
     
     [self prepare];
     
@@ -136,9 +165,9 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
 {
     MYRHTTPSession* session = [MYRHTTPSession sharedSession];
     
-    NSMutableURLRequest* req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:kImageUrl]];
+    NSMutableURLRequest* req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:kDownloadUrl]];
     
-    NSData* data = [NSData dataWithContentsOfURL:[NSURL URLWithString:kImageUrl]];
+    NSData* data = [NSData dataWithContentsOfURL:[NSURL URLWithString:kDownloadUrl]];
     
     GHAssertTrue([data length] > 0, @"get test image");
     
@@ -172,9 +201,9 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
 {
     MYRHTTPSession* session = [MYRHTTPSession sharedSession];
     
-    NSMutableURLRequest* req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:kImageUrl]];
+    NSMutableURLRequest* req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:kDownloadUrl]];
     
-    NSData* data = [NSData dataWithContentsOfURL:[NSURL URLWithString:kImageUrl]];
+    NSData* data = [NSData dataWithContentsOfURL:[NSURL URLWithString:kDownloadUrl]];
     
     GHAssertTrue([data length] > 0, @"get test image");
     
@@ -207,6 +236,35 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
     [self waitForStatus:kGHUnitWaitStatusSuccess timeout:20];
     
     GHAssertTrue(canceledCount + completedCount == max, nil);
+    [self ensureHandlersAreCleared:session];
+}
+
+- (void)testUpload
+{
+    MYRHTTPSession* session = [MYRHTTPSession sharedSession];
+    
+    NSMutableURLRequest* req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:kDownloadUrl]];
+    [req setHTTPMethod:@"PUT"];
+    [req setHTTPBody:UIImagePNGRepresentation([UIImage imageNamed:@"lena.png"])];
+
+    NSInteger max = 10;
+    __block NSInteger count = 0;
+    
+    [self prepare];
+    
+    for (int i = 0; i < max; i++) {
+        [session executeRequest:req progress:nil canceled:nil completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
+            if (response.statusCode == 200) {
+                count++;
+            }
+            if (count == max) {
+                [self notify:kGHUnitWaitStatusSuccess];
+            }
+        }];
+    }
+    
+    [self waitForStatus:kGHUnitWaitStatusSuccess timeout:20];
+    
     [self ensureHandlersAreCleared:session];
 }
 

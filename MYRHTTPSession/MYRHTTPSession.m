@@ -15,6 +15,7 @@ static MYRHTTPSession* _session = nil;
 @property (atomic) NSMutableArray* tasks;
 @property (atomic) NSMutableDictionary* progressHandlerMap;
 @property (atomic) NSMutableDictionary* completionHandlerMap;
+@property (atomic) NSMutableDictionary* cancelHandlerMap;
 
 @property (atomic) NSURLSession* urlSession;
 
@@ -41,13 +42,32 @@ static MYRHTTPSession* _session = nil;
         _tasks = [NSMutableArray array];
         
         _progressHandlerMap = [NSMutableDictionary dictionary];
+        _cancelHandlerMap = [NSMutableDictionary dictionary];
         _completionHandlerMap = [NSMutableDictionary dictionary];
     }
     
     return self;
 }
 
-- (void)executeRequest:(NSURLRequest *)request progress:(void (^)(int64_t, int64_t))progress completion:(void (^)(NSHTTPURLResponse *, NSData *, NSError *))completion
+//- (void)executeRequest:(NSURLRequest *)request progress:(void (^)(int64_t, int64_t))progress completion:(void (^)(NSHTTPURLResponse *, NSData *, NSError *))completion
+//{
+//    NSURLSessionTask* task = [_urlSession downloadTaskWithRequest:request];
+//    
+//    @synchronized(self) {
+//        [_tasks addObject:task];
+//        
+//        if (progress) {
+//            [_progressHandlerMap setObject:[progress copy] forKey:task];
+//        }
+//        if (completion) {
+//            [_completionHandlerMap setObject:[completion copy] forKey:task];
+//        }
+//    }
+//    
+//    [task resume];
+//}
+
+- (void)executeRequest:(NSURLRequest *)request progress:(void (^)(int64_t, int64_t))progress canceled:(void (^)())canceled completion:(void (^)(NSHTTPURLResponse *, NSData *, NSError *))completion
 {
     NSURLSessionTask* task = [_urlSession downloadTaskWithRequest:request];
     
@@ -56,6 +76,9 @@ static MYRHTTPSession* _session = nil;
         
         if (progress) {
             [_progressHandlerMap setObject:[progress copy] forKey:task];
+        }
+        if (canceled) {
+            [_cancelHandlerMap setObject:[canceled copy] forKey:task];
         }
         if (completion) {
             [_completionHandlerMap setObject:[completion copy] forKey:task];
@@ -77,33 +100,44 @@ static MYRHTTPSession* _session = nil;
 - (void)removeKeyFromMaps:(NSURLSessionTask *)key
 {
     [_progressHandlerMap removeObjectForKey:key];
+    [_cancelHandlerMap removeObjectForKey:key];
     [_completionHandlerMap removeObjectForKey:key];
 }
 
 - (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error
 {
     @synchronized(self){
-        if (_completionHandlerMap[task]) {
-            void (^completion)(NSHTTPURLResponse *, NSData *, NSError *) = _completionHandlerMap[task];
-            
+        void (^canceled)() = _cancelHandlerMap[task];
+        void (^completion)(NSHTTPURLResponse *, NSData *, NSError *) = _completionHandlerMap[task];
+        
+        if (error && error.code == NSURLErrorCancelled && canceled) {
+            canceled();
+        } else if(completion) {
             completion((id)task.response, nil, task.error);
-            [self removeKeyFromMaps:task];
-            [_tasks removeObject:task];
         }
+        
+        [self removeKeyFromMaps:task];
+        [_tasks removeObject:task];
     }
 }
 
 - (void)URLSession:(NSURLSession *)session downloadTask:(NSURLSessionDownloadTask *)downloadTask didFinishDownloadingToURL:(NSURL *)location
 {
     @synchronized(self){
-        if (_completionHandlerMap[downloadTask]) {
-            void (^completion)(NSHTTPURLResponse *, NSData *, NSError *) = _completionHandlerMap[downloadTask];
-            
-            NSData* data = [NSData dataWithContentsOfURL:location];
-            completion((id)downloadTask.response, data, downloadTask.error);
-            [self removeKeyFromMaps:downloadTask];
-            [_tasks removeObject:downloadTask];
+        void (^canceled)() = _cancelHandlerMap[downloadTask];
+        void (^completion)(NSHTTPURLResponse *, NSData *, NSError *) = _completionHandlerMap[downloadTask];
+        
+        NSError* error = downloadTask.error;
+        NSData* data = [NSData dataWithContentsOfURL:location];
+        
+        if (error && error.code == NSURLErrorCancelled && canceled) {
+            canceled();
+        } else if(completion) {
+            completion((id)downloadTask.response, data, error);
         }
+        
+        [self removeKeyFromMaps:downloadTask];
+        [_tasks removeObject:downloadTask];
     }
 }
 

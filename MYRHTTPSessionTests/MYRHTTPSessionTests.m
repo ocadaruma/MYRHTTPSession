@@ -38,7 +38,7 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
     [self prepare];
     
     for (int i = 0; i < max; i++) {
-        [session executeRequest:req progress:nil completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
+        [session executeRequest:req progress:nil canceled:nil completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
             if ([data length] == [body length]) {
                 count++;
             }
@@ -50,13 +50,7 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
     
     [self waitForStatus:kGHUnitWaitStatusSuccess timeout:20];
     
-    NSDictionary* progressHandlers = [session valueForKey:@"progressHandlerMap"];
-    NSDictionary* completionHandlers = [session valueForKey:@"completionHandlerMap"];
-    NSArray* tasks = [session valueForKey:@"tasks"];
-    
-    GHAssertTrue([progressHandlers count] == 0, @"I worry about my implementaion. I want to make sure that all handlers are cleared");
-    GHAssertTrue([completionHandlers count] == 0, @"");
-    GHAssertTrue([tasks count] == 0, @"");
+    [self ensureHandlersAreCleared:session];
 }
 
 - (void)testCompletionHandlerError
@@ -71,7 +65,7 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
     [self prepare];
     
     for (int i = 0; i < max; i++) {
-        [session executeRequest:req progress:nil completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
+        [session executeRequest:req progress:nil canceled:nil completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
             if (error != nil && error.code != NSURLErrorCancelled) {
                 count++;
             }
@@ -83,13 +77,7 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
     
     [self waitForStatus:kGHUnitWaitStatusSuccess timeout:100];
     
-    NSDictionary* progressHandlers = [session valueForKey:@"progressHandlerMap"];
-    NSDictionary* completionHandlers = [session valueForKey:@"completionHandlerMap"];
-    NSArray* tasks = [session valueForKey:@"tasks"];
-    
-    GHAssertTrue([progressHandlers count] == 0, @"I worry about my implementaion. I want to make sure that all handlers are cleared");
-    GHAssertTrue([completionHandlers count] == 0, @"");
-    GHAssertTrue([tasks count] == 0, @"");
+    [self ensureHandlersAreCleared:session];
 }
 
 - (void)testProgressHandler
@@ -114,7 +102,7 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
         if (correctSizeFlag && doneBytes == [data length]) {
             correctDoneFlag = YES;
         }
-    } completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
+    } canceled:nil completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
         if (correctDoneFlag && [body length] == [data length]) {
             [self notify:kGHUnitWaitStatusSuccess];
         }
@@ -122,13 +110,7 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
     
     [self waitForStatus:kGHUnitWaitStatusSuccess timeout:10];
     
-    NSDictionary* progressHandlers = [session valueForKey:@"progressHandlerMap"];
-    NSDictionary* completionHandlers = [session valueForKey:@"completionHandlerMap"];
-    NSArray* tasks = [session valueForKey:@"tasks"];
-    
-    GHAssertTrue([progressHandlers count] == 0, @"I worry about my implementaion. I want to make sure that all handlers are cleared");
-    GHAssertTrue([completionHandlers count] == 0, @"");
-    GHAssertTrue([tasks count] == 0, @"");
+    [self ensureHandlersAreCleared:session];
 }
 
 - (void)testCancelAll_HeavyResource
@@ -139,22 +121,14 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
     
     [self prepare];
     
-    [session executeRequest:req progress:nil completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
-        if (error && error.code == NSURLErrorCancelled) {
-            [self notify:kGHUnitWaitStatusSuccess];
-        }
-    }];
+    [session executeRequest:req progress:nil canceled:^{
+        [self notify:kGHUnitWaitStatusSuccess];
+    } completion:nil];
     
     [session cancelAll];
     [self waitForStatus:kGHUnitWaitStatusSuccess timeout:20];
     
-    NSDictionary* progressHandlers = [session valueForKey:@"progressHandlerMap"];
-    NSDictionary* completionHandlers = [session valueForKey:@"completionHandlerMap"];
-    NSArray* tasks = [session valueForKey:@"tasks"];
-    
-    GHAssertTrue([progressHandlers count] == 0, @"I worry about my implementaion. I want to make sure that all handlers are cleared");
-    GHAssertTrue([completionHandlers count] == 0, @"");
-    GHAssertTrue([tasks count] == 0, @"");
+    [self ensureHandlersAreCleared:session];
 }
 
 - (void)testCancelAll
@@ -172,13 +146,15 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
     NSInteger max = 10;
     __block NSInteger count = 0;
     for (int i = 0; i < max; i++) {
-        [session executeRequest:req progress:nil completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
-            if (error && error.code == NSURLErrorCancelled) {
-                count++;
-            } else if (!error && [body length] == [data length]) {
+        [session executeRequest:req progress:nil canceled:^{
+            count++;
+            if (count == max) {
+                [self notify:kGHUnitWaitStatusSuccess];
+            }
+        } completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
+            if (!error && [body length] == [data length]) {
                 count++;
             }
-            
             if (count == max) {
                 [self notify:kGHUnitWaitStatusSuccess];
             }
@@ -188,6 +164,53 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
     [session cancelAll];
     [self waitForStatus:kGHUnitWaitStatusSuccess timeout:20];
     
+    [self ensureHandlersAreCleared:session];
+}
+
+- (void)testCancelAll_CompletionNotCalled
+{
+    MYRHTTPSession* session = [MYRHTTPSession sharedSession];
+    
+    NSMutableURLRequest* req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:kImageUrl]];
+    
+    NSData* data = [NSData dataWithContentsOfURL:[NSURL URLWithString:kImageUrl]];
+    
+    GHAssertTrue([data length] > 0, @"get test image");
+    
+    [self prepare];
+    
+    NSInteger max = 10;
+    __block NSInteger count = 0;
+    __block NSInteger canceledCount = 0;
+    __block NSInteger completedCount = 0;
+    
+    for (int i = 0; i < max; i++) {
+        [session executeRequest:req progress:nil canceled:^{
+            count++;
+            canceledCount++;
+            if (count == max) {
+                [self notify:kGHUnitWaitStatusSuccess];
+            }
+        } completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
+            completedCount++;
+            if (!error && [body length] == [data length]) {
+                count++;
+            }
+            if (count == max) {
+                [self notify:kGHUnitWaitStatusSuccess];
+            }
+        }];
+    }
+    
+    [session cancelAll];
+    [self waitForStatus:kGHUnitWaitStatusSuccess timeout:20];
+    
+    GHAssertTrue(canceledCount + completedCount == max, nil);
+    [self ensureHandlersAreCleared:session];
+}
+
+- (void)ensureHandlersAreCleared:(MYRHTTPSession* )session
+{
     NSDictionary* progressHandlers = [session valueForKey:@"progressHandlerMap"];
     NSDictionary* completionHandlers = [session valueForKey:@"completionHandlerMap"];
     NSArray* tasks = [session valueForKey:@"tasks"];

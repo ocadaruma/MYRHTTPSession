@@ -11,6 +11,7 @@
 
 static NSString* const kImageUrl = @"http://colorvisiontesting.com/plate%20with%205.jpg";
 static NSString* const kHeavyImageUrl = @"http://upload.wikimedia.org/wikipedia/commons/1/19/DSCF1069-Castielli-Italy-Etna-Creative_Commons-High_Resolution_2.jpg";
+static NSString* const kMediumImageUrl = @"http://commons.hortipedia.com/images/3/34/Saxifraga_cortusifolia_leaf_photo_file_700KB.jpg";
 static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
 
 @implementation MYRHTTPSessionTests
@@ -84,8 +85,8 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
 {
     MYRHTTPSession* session = [MYRHTTPSession sharedSession];
     
-    NSMutableURLRequest* req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:kImageUrl]];
-    NSData* data = [NSData dataWithContentsOfURL:[NSURL URLWithString:kImageUrl]];
+    NSMutableURLRequest* req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:kMediumImageUrl]];
+    NSData* data = [NSData dataWithContentsOfURL:[NSURL URLWithString:kMediumImageUrl]];
     
     GHAssertTrue([data length] > 0, @"get test image");
     
@@ -108,7 +109,7 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
         }
     }];
     
-    [self waitForStatus:kGHUnitWaitStatusSuccess timeout:10];
+    [self waitForStatus:kGHUnitWaitStatusSuccess timeout:20];
     
     [self ensureHandlersAreCleared:session];
 }
@@ -207,6 +208,11 @@ static NSString* const kNotfoundUrl = @"http://aaaaaaaaaaaaaaaaaaaa";
     
     GHAssertTrue(canceledCount + completedCount == max, nil);
     [self ensureHandlersAreCleared:session];
+}
+
+- (void)testUploadProgress
+{
+    
 }
 
 - (void)ensureHandlersAreCleared:(MYRHTTPSession* )session

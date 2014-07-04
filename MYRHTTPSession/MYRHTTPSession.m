@@ -10,7 +10,7 @@
 
 static MYRHTTPSession* _session = nil;
 
-@interface MYRHTTPSession ()<NSURLSessionTaskDelegate, NSURLSessionDataDelegate>
+@interface MYRHTTPSession ()<NSURLSessionTaskDelegate, NSURLSessionDownloadDelegate>
 
 @property (atomic) NSMutableArray* tasks;
 @property (atomic) NSMutableDictionary* progressHandlerMap;
@@ -48,24 +48,6 @@ static MYRHTTPSession* _session = nil;
     
     return self;
 }
-
-//- (void)executeRequest:(NSURLRequest *)request progress:(void (^)(int64_t, int64_t))progress completion:(void (^)(NSHTTPURLResponse *, NSData *, NSError *))completion
-//{
-//    NSURLSessionTask* task = [_urlSession downloadTaskWithRequest:request];
-//    
-//    @synchronized(self) {
-//        [_tasks addObject:task];
-//        
-//        if (progress) {
-//            [_progressHandlerMap setObject:[progress copy] forKey:task];
-//        }
-//        if (completion) {
-//            [_completionHandlerMap setObject:[completion copy] forKey:task];
-//        }
-//    }
-//    
-//    [task resume];
-//}
 
 - (void)executeRequest:(NSURLRequest *)request progress:(void (^)(int64_t, int64_t))progress canceled:(void (^)())canceled completion:(void (^)(NSHTTPURLResponse *, NSData *, NSError *))completion
 {

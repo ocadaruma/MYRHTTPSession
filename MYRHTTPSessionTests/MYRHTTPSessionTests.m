@@ -2,7 +2,7 @@
 //  MYRHTTPSessionTests.m
 //  MYRHTTPSession
 //
-//  Created by park on 2014/07/04.
+//  Created by haruki okada on 2014/07/04.
 //
 //
 
@@ -211,20 +211,21 @@ static NSString* const kUploadUrl = @"http://upload";
     
     NSInteger max = 10;
     __block NSInteger count = 0;
-    __block NSInteger canceledCount = 0;
-    __block NSInteger completedCount = 0;
+
+    NSMutableSet* canceledSet = [NSMutableSet set];
+    NSMutableSet* completedSet = [NSMutableSet set];
     
     for (int i = 0; i < max; i++) {
         [session executeRequest:req progress:nil canceled:^{
+            [canceledSet addObject:@(i)];
             count++;
-            canceledCount++;
             if (count == max) {
                 [self notify:kGHUnitWaitStatusSuccess];
             }
         } completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
-            completedCount++;
             if (!error && [body length] == [data length]) {
                 count++;
+                [completedSet addObject:@(i)];
             }
             if (count == max) {
                 [self notify:kGHUnitWaitStatusSuccess];
@@ -235,7 +236,8 @@ static NSString* const kUploadUrl = @"http://upload";
     [session cancelAll];
     [self waitForStatus:kGHUnitWaitStatusSuccess timeout:20];
     
-    GHAssertTrue(canceledCount + completedCount == max, nil);
+    GHAssertTrue([canceledSet count] + [completedSet count] == max, nil);
+    GHAssertTrue(![canceledSet intersectsSet:completedSet], nil);
     [self ensureHandlersAreCleared:session];
 }
 
@@ -268,13 +270,56 @@ static NSString* const kUploadUrl = @"http://upload";
     [self ensureHandlersAreCleared:session];
 }
 
+- (void)testIndivisualTaskCancel
+{
+    MYRHTTPSession* session = [MYRHTTPSession sharedSession];
+    
+    NSMutableURLRequest* req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:kDownloadUrl]];
+    NSData* data = [NSData dataWithContentsOfURL:[NSURL URLWithString:kDownloadUrl]];
+    
+    GHAssertTrue([data length] > 0, @"get test image");
+    
+    NSInteger max = 10;
+    __block NSInteger count = 0;
+    NSURLSessionTask* target = nil;
+    
+    [self prepare];
+    
+    for (int i = 0; i < max; i++) {
+        NSURLSessionTask* task = [session executeRequest:req progress:nil canceled:^{
+            count++;
+            if (count == max) {
+                [self notify:kGHUnitWaitStatusSuccess];
+            }
+        } completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
+            if ([data length] == [body length]) {
+                count++;
+            }
+            if (count == max) {
+                [self notify:kGHUnitWaitStatusSuccess];
+            }
+        }];
+        
+        if (i == 5) {
+            target = task;
+        }
+    }
+    
+    [target cancel];
+    [self waitForStatus:kGHUnitWaitStatusSuccess timeout:20];
+    
+    GHAssertTrue(count == max, nil);
+
+    [self ensureHandlersAreCleared:session];
+}
+
 - (void)ensureHandlersAreCleared:(MYRHTTPSession* )session
 {
     NSDictionary* progressHandlers = [session valueForKey:@"progressHandlerMap"];
     NSDictionary* completionHandlers = [session valueForKey:@"completionHandlerMap"];
     NSArray* tasks = [session valueForKey:@"tasks"];
     
-    GHAssertTrue([progressHandlers count] == 0, @"I worry about my implementaion. I want to make sure that all handlers are cleared");
+    GHAssertTrue([progressHandlers count] == 0, @"I want to make sure that all handlers are cleared");
     GHAssertTrue([completionHandlers count] == 0, @"");
     GHAssertTrue([tasks count] == 0, @"");
 }

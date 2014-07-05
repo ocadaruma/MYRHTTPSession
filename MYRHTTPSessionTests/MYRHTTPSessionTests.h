@@ -2,7 +2,7 @@
 //  MYRHTTPSessionTests.h
 //  MYRHTTPSession
 //
-//  Created by park on 2014/07/04.
+//  Created by haruki okada on 2014/07/04.
 //
 //
 

@@ -2,7 +2,7 @@
 //  MYRHTTPSession.h
 //  MYRHTTPSession
 //
-//  Created by park on 2014/07/04.
+//  Created by haruki okada on 2014/07/04.
 //
 //
 
@@ -12,7 +12,7 @@
 
 + (instancetype)sharedSession;
 
-- (void)executeRequest:(NSURLRequest *)request progress:(void (^)(int64_t doneBytes, int64_t totalBytes))progress canceled:(void (^)())canceled completion:(void (^)(NSHTTPURLResponse* response, NSData* body, NSError* error))completion;
+- (NSURLSessionTask *)executeRequest:(NSURLRequest *)request progress:(void (^)(int64_t doneBytes, int64_t totalBytes))progress canceled:(void (^)())canceled completion:(void (^)(NSHTTPURLResponse* response, NSData* body, NSError* error))completion;
 
 - (void)cancelAll;
 

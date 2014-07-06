@@ -68,7 +68,7 @@ static NSString* const kUploadUrl = @"http://upload";
     [self prepare];
     
     for (int i = 0; i < max; i++) {
-        [session executeRequest:req progress:nil canceled:nil completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
+        [session sendRequest:req progress:nil canceled:nil completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
             if ([data length] == [body length]) {
                 count++;
             }
@@ -95,7 +95,7 @@ static NSString* const kUploadUrl = @"http://upload";
     [self prepare];
     
     for (int i = 0; i < max; i++) {
-        [session executeRequest:req progress:nil canceled:nil completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
+        [session sendRequest:req progress:nil canceled:nil completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
             if (error != nil && error.code != NSURLErrorCancelled) {
                 count++;
             }
@@ -123,7 +123,7 @@ static NSString* const kUploadUrl = @"http://upload";
     
     __block BOOL correctSizeFlag = YES;
     __block BOOL correctDoneFlag = NO;
-    [session executeRequest:req progress:^(int64_t doneBytes, int64_t totalBytes) {
+    [session sendRequest:req progress:^(int64_t doneBytes, int64_t totalBytes) {
         NSLog(@"percent:%@", @((double)doneBytes/totalBytes));
         
         if (totalBytes != [data length]) {
@@ -151,7 +151,7 @@ static NSString* const kUploadUrl = @"http://upload";
     
     [self prepare];
     
-    [session executeRequest:req progress:nil canceled:^{
+    [session sendRequest:req progress:nil canceled:^{
         [self notify:kGHUnitWaitStatusSuccess];
     } completion:nil];
     
@@ -176,7 +176,7 @@ static NSString* const kUploadUrl = @"http://upload";
     NSInteger max = 10;
     __block NSInteger count = 0;
     for (int i = 0; i < max; i++) {
-        [session executeRequest:req progress:nil canceled:^{
+        [session sendRequest:req progress:nil canceled:^{
             count++;
             if (count == max) {
                 [self notify:kGHUnitWaitStatusSuccess];
@@ -216,7 +216,7 @@ static NSString* const kUploadUrl = @"http://upload";
     NSMutableSet* completedSet = [NSMutableSet set];
     
     for (int i = 0; i < max; i++) {
-        [session executeRequest:req progress:nil canceled:^{
+        [session sendRequest:req progress:nil canceled:^{
             [canceledSet addObject:@(i)];
             count++;
             if (count == max) {
@@ -255,7 +255,7 @@ static NSString* const kUploadUrl = @"http://upload";
     [self prepare];
     
     for (int i = 0; i < max; i++) {
-        [session executeRequest:req progress:nil canceled:nil completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
+        [session sendRequest:req progress:nil canceled:nil completion:^(NSHTTPURLResponse *response, NSData *body, NSError *error) {
             if (response.statusCode == 200) {
                 count++;
             }
@@ -286,7 +286,7 @@ static NSString* const kUploadUrl = @"http://upload";
     [self prepare];
     
     for (int i = 0; i < max; i++) {
-        NSURLSessionTask* task = [session executeRequest:req progress:nil canceled:^{
+        NSURLSessionTask* task = [session sendRequest:req progress:nil canceled:^{
             count++;
             if (count == max) {
                 [self notify:kGHUnitWaitStatusSuccess];

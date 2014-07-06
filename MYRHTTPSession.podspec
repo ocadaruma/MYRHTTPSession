@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
   s.name         = "MYRHTTPSession"
   s.version      = "0.0.1"
-  s.summary      = "Easy to use HTTP library supports progress block"
+  s.summary      = "Easy to use HTTP class that supports progress block"
   s.homepage     = "https://github.com/ocadaruma/MYRHTTPSession"
   s.license      = "MIT"
   s.author       = "haruki okada"

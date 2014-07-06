@@ -49,7 +49,7 @@ static MYRHTTPSession* _session = nil;
     return self;
 }
 
-- (NSURLSessionTask *)executeRequest:(NSURLRequest *)request progress:(void (^)(int64_t, int64_t))progress canceled:(void (^)())canceled completion:(void (^)(NSHTTPURLResponse *, NSData *, NSError *))completion
+- (NSURLSessionTask *)sendRequest:(NSURLRequest *)request progress:(void (^)(int64_t, int64_t))progress canceled:(void (^)())canceled completion:(void (^)(NSHTTPURLResponse *, NSData *, NSError *))completion
 {
     NSURLSessionTask* task = [_urlSession downloadTaskWithRequest:request];
     

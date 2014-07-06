@@ -49,7 +49,7 @@ static MYRHTTPSession* _session = nil;
     return self;
 }
 
-- (NSURLSessionTask *)sendRequest:(NSURLRequest *)request progress:(void (^)(int64_t, int64_t))progress canceled:(void (^)())canceled completion:(void (^)(NSHTTPURLResponse *, NSData *, NSError *))completion
+- (NSURLSessionTask *)sendRequest:(NSURLRequest *)request progress:(void (^)(int64_t, int64_t))progress cancelled:(void (^)())cancelled completion:(void (^)(NSHTTPURLResponse *, NSData *, NSError *))completion
 {
     NSURLSessionTask* task = [_urlSession downloadTaskWithRequest:request];
     
@@ -59,8 +59,8 @@ static MYRHTTPSession* _session = nil;
         if (progress) {
             [_progressHandlerMap setObject:[progress copy] forKey:task];
         }
-        if (canceled) {
-            [_cancelHandlerMap setObject:[canceled copy] forKey:task];
+        if (cancelled) {
+            [_cancelHandlerMap setObject:[cancelled copy] forKey:task];
         }
         if (completion) {
             [_completionHandlerMap setObject:[completion copy] forKey:task];
@@ -91,8 +91,10 @@ static MYRHTTPSession* _session = nil;
         void (^canceled)() = _cancelHandlerMap[task];
         void (^completion)(NSHTTPURLResponse *, NSData *, NSError *) = _completionHandlerMap[task];
         
-        if (error && error.code == NSURLErrorCancelled && canceled) {
-            canceled();
+        if (error && error.code == NSURLErrorCancelled) {
+            if (canceled) {
+                canceled();
+            }
         } else if(completion) {
             completion((id)task.response, nil, task.error);
         }
